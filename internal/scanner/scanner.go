@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+// Opens the file in the received path.
+// Returns any error that occurs.
 func ReadLog(path string, process func(string)) error {
 	file, err := os.Open(path)
 
