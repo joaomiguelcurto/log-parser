@@ -1,0 +1,1 @@
+This project serves as a dedicated space for me to learn high-performance systems and CLI development. I have committed myself to building this tool without the assistance of any type of AI, relying exclusively on official documentation, technical forums, and trial, error and tears to ensure that I learn more as a programmer.

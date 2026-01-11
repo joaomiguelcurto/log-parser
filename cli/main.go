@@ -61,6 +61,7 @@ func main() {
 	fmt.Printf("Done Analyzing\n")
 }
 
+// Prints the report and information about the scan.
 func PrintReport(searchTerms string, lineCount int, flagCount int, errorPercentage float64, analyzeDuration time.Duration, linesPerSecond float64) {
 	fmt.Printf("----- Start Info ----- \n")
 	fmt.Printf("Search terms: %s\n", searchTerms)
