@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/joaomiguelcurto/log-parser/internal/parser"
 	"github.com/joaomiguelcurto/log-parser/internal/scanner"
 )
 
@@ -36,6 +37,7 @@ func main() {
 	searchTerms := strings.Split(*searchFlag, ",")
 	path := *pathFlag
 
+	// TODO: Find use for the terms (OBSOLETE RIGHT NOW)
 	var cleanTerms []string
 
 	for _, element := range searchTerms {
@@ -45,34 +47,52 @@ func main() {
 	fmt.Printf("Analyzing log file: %s\n", path)
 
 	lineCount := 0
-	flagCount := 0
-	errorPercentage := 0.0
 	linesPerSecond := 0.0
 
 	// make instead of var so it initializes instead of just declaration
 	flagMap := make(map[string]int)
 
-	for _, element := range cleanTerms {
+	/*for _, element := range cleanTerms {
 		flagMap[element] = 0
-	}
+	}*/
 
 	analyzeStart := time.Now()
+
+	parsed := parser.LogEntry{}
+
+	p := parser.LinuxParser{}
+
+	cleanProcess := ""
+	processNameIndex := 0
 
 	// Callback
 	err := scanner.ReadLog(path, func(line string) {
 		// fmt.Printf(line, "\n")
 		lineCount++
 
-		upperLine := strings.ToUpper(line)
+		// upperLine := strings.ToUpper(line)
 
-		for _, element := range cleanTerms {
-			// if it finds the flag then it skips the rest of the line (flags usually found at the start)
-			if strings.Contains(upperLine, element) {
-				flagCount++
-				flagMap[element]++
-				break
-			}
+		parsed = p.Parse(line)
+
+		processNameIndex = strings.Index(parsed.Process[:], "[")
+
+		if processNameIndex != -1 {
+			// [ found so it slices it (example: sshd[1234] -> sshd)
+			cleanProcess = parsed.Process[:processNameIndex]
+			flagMap[cleanProcess]++
+		} else {
+			// No [ found so the process is already clean
+			flagMap[parsed.Process]++
 		}
+
+		/*
+			for _, element := range cleanTerms {
+				// if it finds the flag then it skips the rest of the line (flags usually found at the start)
+				if strings.Contains(upperLine, element) {
+					// flagMap[element]++
+					break
+				}
+			}*/
 	})
 
 	if err != nil {
@@ -83,16 +103,19 @@ func main() {
 	analyzeEnd := time.Now()
 
 	analyzeDuration := analyzeEnd.Sub(analyzeStart)
-	errorPercentage = (float64(flagCount) / float64(lineCount)) * 100.0
 	linesPerSecond = float64(lineCount) / analyzeDuration.Seconds()
+
+	fmt.Println(parsed)
+	fmt.Println(parsed.Timestamp)
+	fmt.Println(parsed.Hostname)
+	fmt.Println(parsed.Process)
+	fmt.Println(parsed.Message)
 
 	results := report{
 		flagMap:         flagMap,
 		path:            path,
 		cleanTerms:      cleanTerms,
 		lineCount:       lineCount,
-		flagCount:       flagCount,
-		errorPercentage: errorPercentage,
 		analyzeDuration: analyzeDuration,
 		linesPerSecond:  linesPerSecond,
 	}
@@ -109,15 +132,13 @@ func PrintReport(r report) {
 	fmt.Printf("----- End Info ----- \n")
 
 	fmt.Printf("----- Start Terms Info ----- \n")
-	for _, element := range r.cleanTerms {
-		fmt.Printf("Search term and count - %s: %d\n", element, r.flagMap[element])
+	for name, count := range r.flagMap {
+		fmt.Printf("Search term and count - %s: %d\n", name, count)
 	}
 	fmt.Printf("----- End Terms Info ----- \n")
 
 	fmt.Printf("----- Start Report ----- \n")
 	fmt.Printf("Lines: %d\n", r.lineCount)
-	fmt.Printf("Lines with Flags: %d\n", r.flagCount)
-	fmt.Printf("Flags Percentage: %.1f%%\n", r.errorPercentage)
 	fmt.Printf("Analyze Duration: %s\n", r.analyzeDuration)
 	fmt.Printf("Lines per Second: %.0f\n", r.linesPerSecond)
 	fmt.Printf("----- End Report ----- \n")
