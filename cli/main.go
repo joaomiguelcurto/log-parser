@@ -9,24 +9,10 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/joaomiguelcurto/log-parser/internal/models"
 	"github.com/joaomiguelcurto/log-parser/internal/parser"
 	"github.com/joaomiguelcurto/log-parser/internal/scanner"
 )
-
-// Structure that will display the final report of the scan.
-type report struct {
-	Path            string
-	CleanTerms      []string
-	ProcessStats    []processStat
-	LineCount       int
-	AnalyzeDuration time.Duration
-	LinesPerSecond  float64
-}
-
-type processStat struct {
-	Name  string
-	Count int
-}
 
 func main() {
 	searchFlag := flag.String("search", "ERROR", "Search term to search for a specific flag in the log file. (example: ERROR, CRITICAL, INFO, etc...)")
@@ -59,11 +45,8 @@ func main() {
 
 	analyzeStart := time.Now()
 
-	parsed := parser.LogEntry{}
+	parsed := models.LogEntry{}
 	p := parser.LinuxParser{}
-
-	cleanProcess := ""
-	processNameIndex := 0
 
 	// Callback
 	err := scanner.ReadLog(path, func(line string) {
@@ -74,16 +57,7 @@ func main() {
 
 		parsed = p.Parse(line)
 
-		processNameIndex = strings.Index(parsed.Process[:], "[")
-
-		if processNameIndex != -1 {
-			// [ found so it slices it (example: sshd[1234] -> sshd)
-			cleanProcess = parsed.Process[:processNameIndex]
-			processMap[cleanProcess]++
-		} else {
-			// No [ found so the process is already clean
-			processMap[parsed.Process]++
-		}
+		processMap[parsed.ProcessName]++
 
 		/*
 			for _, element := range cleanTerms {
@@ -105,10 +79,11 @@ func main() {
 	analyzeDuration := analyzeEnd.Sub(analyzeStart)
 	linesPerSecond = float64(lineCount) / analyzeDuration.Seconds()
 
-	processStats := []processStat{}
+	// Sort the processes by count
+	processStats := []models.ProcessStat{}
 
 	for name, count := range processMap {
-		processStats = append(processStats, processStat{
+		processStats = append(processStats, models.ProcessStat{
 			Name:  name,
 			Count: count,
 		})
@@ -118,7 +93,7 @@ func main() {
 		return processStats[i].Count > processStats[j].Count
 	})
 
-	results := report{
+	results := models.Report{
 		ProcessStats:    processStats,
 		Path:            path,
 		CleanTerms:      cleanTerms,
@@ -133,7 +108,7 @@ func main() {
 }
 
 // Prints the report and information about the scan.
-func PrintReport(r report) {
+func PrintReport(r models.Report) {
 	const reportTemplate = `
 ----- Start Report -----
 Path:             {{.Path}}
