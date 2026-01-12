@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -16,10 +17,15 @@ import (
 type report struct {
 	Path            string
 	CleanTerms      []string
-	ProcessMap      map[string]int
+	ProcessStats    []processStat
 	LineCount       int
 	AnalyzeDuration time.Duration
 	LinesPerSecond  float64
+}
+
+type processStat struct {
+	Name  string
+	Count int
 }
 
 func main() {
@@ -99,8 +105,21 @@ func main() {
 	analyzeDuration := analyzeEnd.Sub(analyzeStart)
 	linesPerSecond = float64(lineCount) / analyzeDuration.Seconds()
 
+	processStats := []processStat{}
+
+	for name, count := range processMap {
+		processStats = append(processStats, processStat{
+			Name:  name,
+			Count: count,
+		})
+	}
+
+	sort.Slice(processStats, func(i, j int) bool {
+		return processStats[i].Count > processStats[j].Count
+	})
+
 	results := report{
-		ProcessMap:      processMap,
+		ProcessStats:    processStats,
 		Path:            path,
 		CleanTerms:      cleanTerms,
 		LineCount:       lineCount,
@@ -123,8 +142,8 @@ Lines per Second: {{printf "%.0f" .LinesPerSecond}}
 Duration:         {{.AnalyzeDuration}}
 
 ----- Process Breakdown -----
-{{- range $name, $count := .ProcessMap}}
-Process: {{printf "%-30s" $name}} | Count: {{$count}}
+{{- range .ProcessStats}}
+Process: {{printf "%-30s" .Name}} | Count: {{.Count}}
 {{- end}}
 ----- End Report -----
 `
