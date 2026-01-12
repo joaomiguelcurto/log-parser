@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/joaomiguelcurto/log-parser/internal/parser"
@@ -13,14 +14,12 @@ import (
 
 // Structure that will display the final report of the scan.
 type report struct {
-	path            string
-	cleanTerms      []string
-	flagMap         map[string]int
-	lineCount       int
-	flagCount       int
-	errorPercentage float64
-	analyzeDuration time.Duration
-	linesPerSecond  float64
+	Path            string
+	CleanTerms      []string
+	ProcessMap      map[string]int
+	LineCount       int
+	AnalyzeDuration time.Duration
+	LinesPerSecond  float64
 }
 
 func main() {
@@ -50,16 +49,11 @@ func main() {
 	linesPerSecond := 0.0
 
 	// make instead of var so it initializes instead of just declaration
-	flagMap := make(map[string]int)
-
-	/*for _, element := range cleanTerms {
-		flagMap[element] = 0
-	}*/
+	processMap := make(map[string]int)
 
 	analyzeStart := time.Now()
 
 	parsed := parser.LogEntry{}
-
 	p := parser.LinuxParser{}
 
 	cleanProcess := ""
@@ -79,17 +73,17 @@ func main() {
 		if processNameIndex != -1 {
 			// [ found so it slices it (example: sshd[1234] -> sshd)
 			cleanProcess = parsed.Process[:processNameIndex]
-			flagMap[cleanProcess]++
+			processMap[cleanProcess]++
 		} else {
 			// No [ found so the process is already clean
-			flagMap[parsed.Process]++
+			processMap[parsed.Process]++
 		}
 
 		/*
 			for _, element := range cleanTerms {
 				// if it finds the flag then it skips the rest of the line (flags usually found at the start)
 				if strings.Contains(upperLine, element) {
-					// flagMap[element]++
+					// processMap[element]++
 					break
 				}
 			}*/
@@ -105,19 +99,13 @@ func main() {
 	analyzeDuration := analyzeEnd.Sub(analyzeStart)
 	linesPerSecond = float64(lineCount) / analyzeDuration.Seconds()
 
-	fmt.Println(parsed)
-	fmt.Println(parsed.Timestamp)
-	fmt.Println(parsed.Hostname)
-	fmt.Println(parsed.Process)
-	fmt.Println(parsed.Message)
-
 	results := report{
-		flagMap:         flagMap,
-		path:            path,
-		cleanTerms:      cleanTerms,
-		lineCount:       lineCount,
-		analyzeDuration: analyzeDuration,
-		linesPerSecond:  linesPerSecond,
+		ProcessMap:      processMap,
+		Path:            path,
+		CleanTerms:      cleanTerms,
+		LineCount:       lineCount,
+		AnalyzeDuration: analyzeDuration,
+		LinesPerSecond:  linesPerSecond,
 	}
 
 	PrintReport(results)
@@ -127,19 +115,29 @@ func main() {
 
 // Prints the report and information about the scan.
 func PrintReport(r report) {
-	fmt.Printf("----- Start Info ----- \n")
-	fmt.Printf("Search terms: %s\n", r.cleanTerms)
-	fmt.Printf("----- End Info ----- \n")
+	const reportTemplate = `
+----- Start Report -----
+Path:             {{.Path}}
+Total Lines:      {{.LineCount}}
+Lines per Second: {{printf "%.0f" .LinesPerSecond}}
+Duration:         {{.AnalyzeDuration}}
 
-	fmt.Printf("----- Start Terms Info ----- \n")
-	for name, count := range r.flagMap {
-		fmt.Printf("Search term and count - %s: %d\n", name, count)
+----- Process Breakdown -----
+{{- range $name, $count := .ProcessMap}}
+Process: {{printf "%-30s" $name}} | Count: {{$count}}
+{{- end}}
+----- End Report -----
+`
+
+	// Create the template
+	tmpl, err := template.New("report").Parse(reportTemplate)
+	if err != nil {
+		panic(err)
 	}
-	fmt.Printf("----- End Terms Info ----- \n")
 
-	fmt.Printf("----- Start Report ----- \n")
-	fmt.Printf("Lines: %d\n", r.lineCount)
-	fmt.Printf("Analyze Duration: %s\n", r.analyzeDuration)
-	fmt.Printf("Lines per Second: %.0f\n", r.linesPerSecond)
-	fmt.Printf("----- End Report ----- \n")
+	// Execute the template
+	err = tmpl.Execute(os.Stdout, r)
+	if err != nil {
+		fmt.Printf("Error printing report: %v\n", err)
+	}
 }
