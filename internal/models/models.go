@@ -6,12 +6,13 @@ import (
 
 // Structure that will display the final report of the scan.
 type Report struct {
-	Path            string
-	CleanTerms      []string
-	ProcessStats    []ProcessStat
-	LineCount       int
-	AnalyzeDuration time.Duration
-	LinesPerSecond  float64
+	Path                   string
+	CleanTerms             []string
+	ProcessStats           []ProcessStat
+	LineCount              int
+	AnalyzeDuration        time.Duration
+	LinesPerSecond         float64
+	FormatedLinesPerSecond string
 }
 
 // Structure to hold the name of each process and the count of appearences.
