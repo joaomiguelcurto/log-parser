@@ -9,7 +9,7 @@ import (
 
 // Interface for the any parser that will be created.
 type LogParser interface {
-	Parse(line string) models.LogEntry
+	Parse(line string, startTime time.Time, endTime time.Time) models.LogEntry
 	GetName() string
 }
 
@@ -19,12 +19,26 @@ func (p LinuxParser) GetName() string {
 	return "Linux/Syslog"
 }
 
-func (p LinuxParser) Parse(line string) models.LogEntry {
+func (p LinuxParser) Parse(line string, startTime time.Time, endTime time.Time) models.LogEntry {
 	r := models.LogEntry{}
 
 	const timeLayout = "Jan _2 15:04:05"
 
-	r.Timestamp, _ = time.Parse(timeLayout, line[0:15])
+	fullTime, _ := time.Parse(timeLayout, line[0:15])
+
+	lineTime := time.Date(0, 1, 1, fullTime.Hour(), fullTime.Minute(), fullTime.Second(), 0, time.UTC)
+
+	if !startTime.IsZero() && lineTime.Before(startTime) {
+		return r
+	}
+
+	if !endTime.IsZero() && lineTime.After(endTime) {
+		return r
+	}
+
+	r.Valid = true
+
+	r.Timestamp = lineTime
 
 	// Finds the first Colon after 15th character of the string
 	colonIndex := strings.Index(line[15:], ":")

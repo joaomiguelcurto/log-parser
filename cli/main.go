@@ -18,6 +18,8 @@ import (
 func main() {
 	searchFlag := flag.String("search", "", "Search term to search for a specific flag in the log file. (example: ERROR, CRITICAL, INFO, etc...)")
 	pathFlag := flag.String("path", "", "File to the Log file to be analyzed.")
+	startFlag := flag.String("start", "", "Time filtering, search for a specific timespan.")
+	endFlag := flag.String("end", "", "File to the Log file to be analyzed.")
 	flag.Parse()
 
 	if *pathFlag == "" {
@@ -28,6 +30,10 @@ func main() {
 	// Needs * so it doesnt try to split the address instead of the actual string
 	searchTerms := strings.Split(*searchFlag, ",")
 	path := *pathFlag
+
+	const timeLayout = "15:04:05"
+	startTime, _ := time.Parse(timeLayout, *startFlag)
+	endTime, _ := time.Parse(timeLayout, *endFlag)
 
 	var cleanTerms []string
 
@@ -61,7 +67,11 @@ func main() {
 	err := scanner.ReadLog(path, func(line string) {
 		lineCount++
 
-		parsed = p.Parse(line)
+		parsed = p.Parse(line, startTime, endTime)
+
+		if !parsed.Valid {
+			return
+		}
 
 		if hasTerms == true {
 			for _, element := range cleanTerms {
@@ -103,6 +113,7 @@ func main() {
 		ProcessStats:           processStats,
 		Path:                   path,
 		CleanTerms:             cleanTerms,
+		FormatedLineCount:      utils.FormatNumberSimple(float64(lineCount)),
 		LineCount:              lineCount,
 		AnalyzeDuration:        analyzeDuration,
 		LinesPerSecond:         linesPerSecond,

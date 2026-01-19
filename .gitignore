@@ -19,7 +19,7 @@
 *.out
 
 # Files used for testing and program logs
-#*.log
+*.log
 
 # Dependency directories (remove the comment below to include it)
 # vendor/

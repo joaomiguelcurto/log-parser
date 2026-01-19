@@ -22,9 +22,9 @@ var White = "\033[97m"
 const reportTemplate = `
 {{Cyan}}----- Start Report -----{{Reset}}
 {{Red}}Path:{{Reset}}             {{.Path}}
-{{Blue}}Total Lines:{{Reset}}      {{.LineCount}}
+{{Blue}}Total Lines:{{Reset}}      {{.FormatedLineCount}}
 {{Green}}Lines per Second:{{Reset}} {{.FormatedLinesPerSecond}}
-Duration:          {{.AnalyzeDuration}}
+Duration:         {{.AnalyzeDuration}}
 
 {{Yellow}}----- Process Breakdown -----{{Reset}}
 {{- range .ProcessStats}}

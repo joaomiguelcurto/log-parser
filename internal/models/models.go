@@ -9,6 +9,7 @@ type Report struct {
 	Path                   string
 	CleanTerms             []string
 	ProcessStats           []ProcessStat
+	FormatedLineCount      string
 	LineCount              int
 	AnalyzeDuration        time.Duration
 	LinesPerSecond         float64
@@ -29,4 +30,5 @@ type LogEntry struct {
 	ProcessName string
 	PID         string
 	Message     string
+	Valid       bool
 }
